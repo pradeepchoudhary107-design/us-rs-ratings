@@ -1,0 +1,42 @@
+name: US RS Scan — Part B + Email
+
+on:
+  schedule:
+    # Saturday 10:00 AM IST = Saturday 04:30 UTC
+    # Starts 2 hours after Part A — gives Part A time to finish
+    - cron: "30 4 * * 6"
+  workflow_dispatch:
+
+jobs:
+  scan-part-b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install libraries
+        run: pip install yfinance pandas requests openpyxl
+
+      - name: Run Part B Scanner + Merge + Send Email
+        env:
+          EMAIL_SENDER:   ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+        run: python us_scan_b.py
+
+      - name: Commit final data.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/data.json docs/data_a.json
+          git diff --staged --quiet || git commit -m "US RS Final: $(date -u '+%d %b %Y')"
+          git push
